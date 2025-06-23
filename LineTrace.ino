@@ -6,8 +6,8 @@ Servo servoR;
 Servo servoL;
 int v[6]={0,0,0,0,0,0}; //6連センサの値を格納する配列
 int b=400;//黒線上であるかとないかの閾値を仮に400とする
-int rotate;
-float k = 0.056; //
+int rotate;//センサの値
+float k = 0.056; //PID制御の値
 void setup() {
 servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
 servoL.attach(5);//○○○.(i)でi番目のピンのモータを関連づける
