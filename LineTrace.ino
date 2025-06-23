@@ -1,4 +1,4 @@
-
+//16
 #include <Adafruit_MCP3008.h>
 #include <Servo.h>
 Adafruit_MCP3008 adc; //下部センサの定義 
