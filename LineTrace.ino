@@ -13,7 +13,7 @@ int v[6]={0,0,0,0,0,0}; //6連センサの値を格納する配列
 int b=400;//黒線上であるかとないかの閾値を仮に400とする
 int mtrL=0, mtrR=0;
 int i;
-int flag = 0;
+int rotate;
 void setup() {
   // put your setup code here, to run once:
 servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
@@ -29,35 +29,66 @@ Serial.begin(9600); //シリアル通信の転送速度
 
 }
 void loop(){
-  for (i=0;i<6;i++){ //6センサ分、端のセンサから1つずつセンサ値読み取り
-    v[i] = adc.readADC(i); // i番目のセンサ値を取得
-    Serial.print(v[i]); //センサ値をシリアルモニタに表示
-    Serial.print(" "); 
-  }
-  Serial.println();//シリアルモニタ上に改行を入力
-  for(i=0;i<2;i++){
-    if(v[i] > b )flag = 1;//黒線の上では止まるフラグを起動
-  }
-  for(i=3;i<5;i++){
-    if(v[i] > b )flag = 2;//黒線の上では止まるフラグを起動
-  }
-  if(flag == 1){//止まり続ける処理
-    mtrL = 90;//個体差によっては90では停止しない場合もある
-    mtrR = 0;
-  }else if(flag == 2){//止まり続ける処理
-    mtrL = 0;//個体差によっては90では停止しない場合もある
-    mtrR = 0;
-  }else{//それ以外のとき直進速度をあたえる
-    mtrL = 150;//値91~180で前方向に回転　指定角度が変わればモーター回転速度も変わる
-    mtrR = 30;//値0~89で前方向に回転
-  }
-  servoL.write(mtrL);
-  servoR.write(mtrR);
+  rotate = read();
+  Serial.print(rotate);
+  Serial.print(" ");
+  runRotate(rotate*0.056);
+  Serial.print(rotate*0.056);
+  Serial.println();
+}
+
+void R_run(){
+  servoL.write(180);
+  servoR.write(90);
   delay(100);
-  /*100msの間ディレイさせて
-   次のループまでの時間を設定している
-   指定した速度を維持するようにしたり
-   シリアルモニタでセンサ値を見れるようにしている*/ 
+}
+
+void L_run(){
+  servoL.write(90);
+  servoR.write(0);
+  delay(100);
+}
+
+void runRotate(float angle){
+  if (angle>0){
+    /*L 180→180 R 0→180*/
+    servoL.write(180);
+    servoR.write(int(angle));
+  }else{
+    /*L 180→0 R 0→0*/
+    servoL.write(180+int(angle));
+    servoR.write(0);
+  }
+}
+
+void run(){
+  servoL.write(180);
+  servoR.write(0);
+  delay(100);
+}
+
+int read(){
+  int rotate = 0;
+  /*
+  for (i=0;i<6;i++){ //6センサ分、端のセンサから1つずつセンサ値読み取り
+    if(adc.readADC(i) > b){
+      v[i] = 1;
+    }else{
+      v[i] = 0;
+    }
+  }*/
+  for (i=0;i<6;i++) {v[i] = adc.readADC(i);}
+  v[0] *= -2;
+  v[1] *= -1;
+  v[2] *= -1;
+  v[3] *= 1;
+  v[4] *= 1;
+  v[5] *= 2;
+  
+  for (i=0;i<6;i++){
+    rotate += v[i];
+  }
+  return rotate;
 }
 
 
