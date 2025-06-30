@@ -13,7 +13,7 @@ int deri =0;//微分するための値格納
 float k = 0.056; //PID制御の値
 float ki =0.05;//Iの係数(0.005仮定)
 float kd= 0.1;//Dの係数(0.1仮定)
-int speedError = 25
+int speedError = 25;
 void setup() {
 servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
 servoL.attach(5);//○○○.(i)でi番目のピンのモータを関連づける
@@ -45,6 +45,12 @@ void loop(){
 
   //分岐判定
   int* flag = readSide();
+  if (flag[0] == 1 || flag[1] == 1){
+    servoL.write(180);
+    servoR.write(0);
+    delay(50);
+  }
+  flag = readSide();
   if (flag[0] == 1 && flag[1] == 1){
     //もし両サイドのセンサが反応したら
     L_run();
@@ -52,12 +58,16 @@ void loop(){
     // もし右だけ反応したら
     servoL.write(180);
     servoR.write(0);
-    delay(1000);
+    delay(500);
   }else if(flag[0] == 1 && flag[1] == 0){
     L_run();
   }
+
   //壁判定
   wall();
+
+  //ゴール判定
+  goal();
 }
 
 void R_run(){
@@ -118,13 +128,13 @@ int* readSide(){
   v[0] = adc.readADC(0);
   v[5] = adc.readADC(5);
 
-  if (v[0] > 400){
+  if (v[0] > 200){
     flag[0] = 1;
   }else{
     flag[0] = 0;
   }
 
-  if (v[5] > 400){
+  if (v[5] > 200){
     flag[1] = 1;
   }else{
     flag[1] = 0;
@@ -142,4 +152,32 @@ void wall(){
   }
 }
 
+void goal(){
+  int flag = 0;
+  for(int i=1; i<5; i++){
+    if(adc.readADC(i) < 400){
+        flag += 1;
+    }
+  }
+  
+  if(flag == 4){
+    servoL.write(180);
+    servoR.write(180);
+    delay(100000);
+  }
+}
 
+int road (int error){
+  integral=error+integral;//積分（誤差の足し算）
+  Serial.print(integral);
+  Serial.print(" ");
+  if(integral>1000){ //1000以上であれば1000に
+    integral=1000;
+  }
+  if(integral<-1000){  //-1000以下であれば-1000に固定
+    integral=-1000;
+  }
+  deri=rotate-lasterror;//微分の値(前回との差)
+
+  return error*k+integral*ki+deri*kd;//pid制御の値
+}
