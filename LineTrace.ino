@@ -1,6 +1,22 @@
 
 #include <Adafruit_MCP3008.h>
 #include <Servo.h>
+# include <new.h>
+
+struct Node
+{
+    int type; //スタートから見て　左分岐→-1　T字路→0　右分岐→1　スタート→-10　行き止まり→5　ゴール→7
+    int direction; //親から見て　左→-1　右→1
+    Node *parent, *left, *right;
+};
+
+Node *root, *curNode, *goal;
+int direction = -1; //親から見て　左→-1　右→1
+int reverse = 0; //葉に向かって進む→0　根に向かって進む→1　ゴール発見後根に戻る→-1
+int goalPath[20]; //ゴールからスタートまでの道筋　左折→-1　直進→5　右折→1
+int finalPath[20]; //スタートからゴールまでの道筋　左折→-1　直進→5　右折→1
+int pathIndex = 0;
+
 Adafruit_MCP3008 adc; //下部センサの定義 
 Servo servoR;
 Servo servoL;
@@ -14,33 +30,33 @@ float k = 0.056; //PID制御の値
 float ki =0.05;//Iの係数(0.005仮定)
 float kd= 0.1;//Dの係数(0.1仮定)
 int speedError = 25;
+
 void setup() {
-servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
-servoL.attach(5);//○○○.(i)でi番目のピンのモータを関連づける
+  servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
+  servoL.attach(5);//○○○.(i)でi番目のピンのモータを関連づける
 
-/*モーター初期化*/
-//引数に90を入れると基本的には車輪のモータは停止する
-servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
-servoL.write(90); //値は0～180の間
+  /*モーター初期化*/
+  //引数に90を入れると基本的には車輪のモータは停止する
+  servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
+  servoL.write(90); //値は0～180の間
 
-adc.begin(); //センサを初期化
-Serial.begin(9600); //シリアル通信の転送速度
+  adc.begin(); //センサを初期化
+  Serial.begin(9600); //シリアル通信の転送速度
+
+  root = new Node;
+  root->type = -10;
+  root->parent = NULL;
+  curNode = root;
 }
 
 //メインループ
 void loop(){
   //センサの値を取得
   rotate = read();
-  //センサの値をモニターに出力
-  Serial.print(rotate);
-  Serial.print(" ");
-
   //pidの値取得
   int pid=road(rotate);
   //走行
   runRotate(pid);
-  Serial.print(pid);
-  Serial.println();
   lasterror=rotate;//前回の値を保持
 
   //分岐判定
@@ -49,31 +65,37 @@ void loop(){
     servoL.write(180);
     servoR.write(0);
     delay(50);
-  }
-  flag = readSide();
-  if (flag[0] == 1 && flag[1] == 1){
-    //もし両サイドのセンサが反応したら
-    L_run();
-  }else if(flag[0] == 0 && flag[1] == 1){
-    // もし右だけ反応したら
-    servoL.write(180);
-    servoR.write(0);
-    delay(500);
-  }else if(flag[0] == 1 && flag[1] == 0){
-    L_run();
+    flag = readSide();
+    if(reverse == -1){
+      //もしゴール到達後なら
+      interchange(-1);
+    }else if(reverse == 1){
+      //もしバックトラック中なら
+      interchange(1);
+    }else if (flag[0] == 1 && flag[1] == 1){
+      //もし両サイドのセンサが反応したらT字路
+      interchange(0);
+    }else if(flag[0] == 0 && flag[1] == 1){
+      // もし右だけ反応したら右分岐
+      interchange(1);
+    }else if(flag[0] == 1 && flag[1] == 0){
+      //もし左だけ反応したら左分岐
+      interchange(-1);
+    }
   }
 
   //壁判定
   wall();
 
   //ゴール判定
-  goal();
+  goals();
 }
 
 void R_run(){
   servoL.write(180);
-  servoR.write(95);
-  delay(1100);
+  servoR.write(102);
+  delay(1000);
+  run();
 }
 
 void L_run(){
@@ -98,86 +120,27 @@ void runRotate(float angle){
 void run(){
   servoL.write(180);
   servoR.write(0);
-  delay(100);
+  delay(500);
 }
 
-//センサの値を読んで変換する関数
-int read(){
-  int rotate = 0;
-  //センサの値を格納
-  for (int i=0;i<6;i++) {v[i] = adc.readADC(i);}
-
-  //各センサに重みをかける
-  //v[0] *= 0;
-  v[1] *= -1.3;
-  v[2] *= -1;
-  v[3] *= 1;
-  v[4] *= 1.3;
-  //v[5] *= 0;
-  
-  //各センサの値を足し合わせる
-  for (int i=0;i<6;i++){
-    rotate += v[i];
+void goals(){
+  if (analogRead(A5) > 550){
+    interchange(7);
   }
-  
-  return rotate;
-}
-
-int* readSide(){
-  static int flag[2] = {0,0};
-  v[0] = adc.readADC(0);
-  v[5] = adc.readADC(5);
-
-  if (v[0] > 200){
-    flag[0] = 1;
-  }else{
-    flag[0] = 0;
-  }
-
-  if (v[5] > 200){
-    flag[1] = 1;
-  }else{
-    flag[1] = 0;
-  }
-  return  flag;
 }
 
 void wall(){
-  Serial.print(analogRead(A5));
-  Serial.print(" ");
-  if (analogRead(A5) > 550){
-    servoL.write(180);
-    servoR.write(180);
-    delay(1550);
-  }
-}
-
-void goal(){
-  int flag = 0;
+  int flag_wall = 0;
   for(int i=1; i<5; i++){
     if(adc.readADC(i) < 400){
-        flag += 1;
+        flag_wall += 1;
     }
   }
-  
-  if(flag == 4){
-    servoL.write(180);
-    servoR.write(180);
-    delay(100000);
+  if(flag_wall == 4){
+    if(reverse == -1){
+      makePath();
+      return;
+    }
+    interchange(5);
   }
-}
-
-int road (int error){
-  integral=error+integral;//積分（誤差の足し算）
-  Serial.print(integral);
-  Serial.print(" ");
-  if(integral>1000){ //1000以上であれば1000に
-    integral=1000;
-  }
-  if(integral<-1000){  //-1000以下であれば-1000に固定
-    integral=-1000;
-  }
-  deri=rotate-lasterror;//微分の値(前回との差)
-
-  return error*k+integral*ki+deri*kd;//pid制御の値
 }
