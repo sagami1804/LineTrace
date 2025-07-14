@@ -30,6 +30,9 @@ float k = 0.056; //PID制御の値
 float ki =0.05;//Iの係数(0.005仮定)
 float kd= 0.1;//Dの係数(0.1仮定)
 int speedError = 25;
+int delays = 1000;
+int rotateDelay = 1600;
+char com = "b";
 
 void setup() {
   servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
@@ -51,6 +54,15 @@ void setup() {
 
 //メインループ
 void loop(){
+  while(1){
+    if(com == 'a'){
+      break;
+    }
+    servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
+    servoL.write(90); //値は0～180の間
+    com = Serial.read();
+    delay(100);
+  }
   //センサの値を取得
   rotate = read();
   //pidの値取得
@@ -64,23 +76,26 @@ void loop(){
   if (flag[0] == 1 || flag[1] == 1){
     servoL.write(180);
     servoR.write(0);
-    delay(50);
+    delay(20);
     flag = readSide();
-    if(reverse == -1){
-      //もしゴール到達後なら
-      interchange(-1);
-    }else if(reverse == 1){
-      //もしバックトラック中なら
-      interchange(1);
-    }else if (flag[0] == 1 && flag[1] == 1){
-      //もし両サイドのセンサが反応したらT字路
-      interchange(0);
-    }else if(flag[0] == 0 && flag[1] == 1){
-      // もし右だけ反応したら右分岐
-      interchange(1);
-    }else if(flag[0] == 1 && flag[1] == 0){
-      //もし左だけ反応したら左分岐
-      interchange(-1);
+    if(flag[0] == 1 || flag[1] == 1){
+      if(reverse == -1){
+        //もしゴール到達後なら
+        interchange(-1);
+      }else if(reverse == 1){
+        //もしバックトラック中なら
+        //Serial.println("Back");
+        interchange(1);
+      }else if (flag[0] == 1 && flag[1] == 1){
+        //もし両サイドのセンサが反応したらT字路
+        interchange(0);
+      }else if(flag[0] == 0 && flag[1] == 1){
+        // もし右だけ反応したら右分岐
+        interchange(1);
+      }else if(flag[0] == 1 && flag[1] == 0){
+        //もし左だけ反応したら左分岐
+        interchange(-1);
+      }
     }
   }
 
@@ -92,16 +107,18 @@ void loop(){
 }
 
 void R_run(){
+  //Serial.println("Right");
   servoL.write(180);
   servoR.write(102);
-  delay(1000);
+  delay(delays);
   run();
 }
 
 void L_run(){
+  //Serial.println("Left");
   servoL.write(85);
   servoR.write(0);
-  delay(1100);
+  delay(delays);
 }
 
 //入力が大きい値であれば大きく曲がる関数
@@ -118,6 +135,7 @@ void runRotate(float angle){
 }
 
 void run(){
+  //Serial.println("Forward");
   servoL.write(180);
   servoR.write(0);
   delay(500);
@@ -125,6 +143,7 @@ void run(){
 
 void goals(){
   if (analogRead(A5) > 550){
+    //Serial.println("goal");
     interchange(7);
   }
 }
@@ -132,15 +151,26 @@ void goals(){
 void wall(){
   int flag_wall = 0;
   for(int i=1; i<5; i++){
-    if(adc.readADC(i) < 400){
+    if(adc.readADC(i) < 200){
         flag_wall += 1;
     }
+    
   }
+  //Serial.println(adc.readADC(3));
   if(flag_wall == 4){
     if(reverse == -1){
       makePath();
+      servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
+      servoL.write(90);
+
+      delay(100000);
       return;
     }
+    //Serial.println("wall");
     interchange(5);
   }
 }
+
+
+
+
