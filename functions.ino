@@ -16,7 +16,6 @@ int read(){
   for (int i=0;i<6;i++){
     rotate += v[i];
   }
-  
   return rotate;
 }
 
@@ -77,33 +76,32 @@ void interchange(int type){
     {
         if (curNode->parent == NULL)
         {
-            printf("null");
             return;
         }
-        
+        //Serial.println(direction);
         if (curNode->direction == -1)
         {
             if (curNode->parent->type == 1)
             {
-                printf("return forward(L)\n");
+                //Serial.println("return forward(L)");
                 run();
                 goalPath[pathIndex] = 5;
             }else{
-                printf("return right(L)\n");
+                //Serial.println("return right(L)");
                 R_run();
-                goalPath[pathIndex] = -1;
+                goalPath[pathIndex] = 1;
             }
             curNode = curNode->parent;
         }else{
             if (curNode->parent->type == -1)
             {
-                printf("return forward(R)\n");
+                //Serial.println("return forward(R)");
                 run();
                 goalPath[pathIndex] = 5;
             }else{
-                printf("return left(R)\n");
+                //Serial.println("return left(R)");
                 L_run();
-                goalPath[pathIndex] = 1;
+                goalPath[pathIndex] = 2;
             }
             curNode = curNode->parent;
         }
@@ -115,10 +113,9 @@ void interchange(int type){
     if(type == 5){
         reverse = 1;
         insert(5,direction,curNode);
-        printf("wall\n");
         servoL.write(180);
         servoR.write(180);
-        delay(1650);
+        delay(rotateDelay);
         return;
     }
 
@@ -127,10 +124,9 @@ void interchange(int type){
         reverse = -1;
         curNode = insert(7,direction,curNode);
         goal = curNode;
-        printf("goal\n");
         servoL.write(180);
         servoR.write(180);
-        delay(1650);
+        delay(rotateDelay);
         return;
     }
 
@@ -138,22 +134,17 @@ void interchange(int type){
         curNode = insert(type,direction,curNode);
         direction = -1;
         if(type == -1){
-            printf("left\n");
             L_run();
         }else if(type == 0){
-            printf("left\n");
             L_run();
         }else{
-            printf("foward\n");
             run();
         }
     }else{
         if(curNode->right == NULL){
             if(curNode->type == 0){
-                printf("forward\n");
                 run();
             }else{
-                printf("left\n");
                 L_run();
             }
             reverse = 0;
@@ -161,12 +152,9 @@ void interchange(int type){
             
         }else{
             curNode = curNode->parent;
-            printf("back ");
             if(curNode->type == -1){
-                printf("forward\n");
                 run();
             }else{
-                printf("left\n");
                 L_run();
             }
         }
@@ -176,6 +164,7 @@ void interchange(int type){
 
 void makePath(){
     int j=0;
+    String str="";
     for (int i = 20; i > -1; i--)
     {
         if (goalPath[i] != 0)
@@ -185,9 +174,11 @@ void makePath(){
         }
     }
     
-    for (int i = 0; i < j; i++)
+    for (int i = 1; i < j; i++)
     {
-        printf("%d,",finalPath[i]);
+        //Serial.print(finalPath[i]);
+        str += String(finalPath[i]);
     }
+    Serial.println(str);
     return;
 }
