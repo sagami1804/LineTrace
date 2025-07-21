@@ -1,4 +1,4 @@
-//センサの値を読んで変換する関数
+//ライントレース用のセンサの値を読んで変換する関数
 int read(){
   int rotate = 0;
   //センサの値を格納
@@ -19,6 +19,7 @@ int read(){
   return rotate;
 }
 
+//交差点判別用のセンサ値を読み取る関数
 int* readSide(){
   static int flag[2] = {0,0};
   v[0] = adc.readADC(0);
@@ -38,6 +39,7 @@ int* readSide(){
   return  flag;
 }
 
+//PID制御を行う関数
 int road (int error){
   integral=error+integral;//積分（誤差の足し算）
   //Serial.print(integral);
@@ -53,6 +55,7 @@ int road (int error){
   return error*k+integral*ki+deri*kd;//pid制御の値
 }
 
+//ノードを追加する関数
 Node* insert(int type, int direction, Node* preNode){
     Node *newNode;
     newNode = new Node;
@@ -70,15 +73,15 @@ Node* insert(int type, int direction, Node* preNode){
     return newNode;
 }
 
+//交差点での処理を行う関数
 void interchange(int type){
-
+    //ゴール到着後なら
     if (reverse == -1)
     {
         if (curNode->parent == NULL)
         {
             return;
         }
-        //Serial.println(direction);
         if (curNode->direction == -1)
         {
             if (curNode->parent->type == 1)
@@ -130,6 +133,7 @@ void interchange(int type){
         return;
     }
 
+    //探索中なら
     if(reverse == 0){
         curNode = insert(type,direction,curNode);
         direction = -1;
@@ -141,6 +145,7 @@ void interchange(int type){
             run();
         }
     }else{
+    //バックトラック中なら
         if(curNode->right == NULL){
             if(curNode->type == 0){
                 run();
@@ -162,6 +167,7 @@ void interchange(int type){
     return;
 }
 
+//スタートからゴールまでのパスを構成する関数
 void makePath(){
     int j=0;
     String str="";
