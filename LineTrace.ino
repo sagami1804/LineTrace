@@ -1,8 +1,9 @@
 
 #include <Adafruit_MCP3008.h>
 #include <Servo.h>
-# include <new.h>
+#include <new.h>
 
+//ノードの宣言
 struct Node
 {
     int type; //スタートから見て　左分岐→-1　T字路→0　右分岐→1　スタート→-10　行き止まり→5　ゴール→7
@@ -29,23 +30,23 @@ int deri =0;//微分するための値格納
 float k = 0.056; //PID制御の値
 float ki =0.05;//Iの係数(0.005仮定)
 float kd= 0.1;//Dの係数(0.1仮定)
-int speedError = 25;
-int delays = 1000;
-int rotateDelay = 1600;
+int speedError = 25;//
+int delays = 1000;//曲がるときの秒数
+int rotateDelay = 1600;//Uターンするときの秒数
 char com = "b";
 
 void setup() {
   servoR.attach(4);//右車輪のモータのピンが4に配線されている場合のアタッチ
   servoL.attach(5);//○○○.(i)でi番目のピンのモータを関連づける
 
-  /*モーター初期化*/
-  //引数に90を入れると基本的には車輪のモータは停止する
-  servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
+  //モーター初期化
+  servoR.write(90); 
   servoL.write(90); //値は0～180の間
 
   adc.begin(); //センサを初期化
   Serial.begin(9600); //シリアル通信の転送速度
 
+  //スタートノードの作成
   root = new Node;
   root->type = -10;
   root->parent = NULL;
@@ -54,6 +55,7 @@ void setup() {
 
 //メインループ
 void loop(){
+  //PCからの命令を待機
   while(1){
     if(com == 'a'){
       break;
@@ -77,6 +79,7 @@ void loop(){
     servoL.write(180);
     servoR.write(0);
     delay(20);
+    //再判定
     flag = readSide();
     if(flag[0] == 1 || flag[1] == 1){
       if(reverse == -1){
@@ -106,22 +109,22 @@ void loop(){
   goals();
 }
 
+//右折する関数
 void R_run(){
-  //Serial.println("Right");
   servoL.write(180);
   servoR.write(102);
   delay(delays);
   run();
 }
 
+//左折する関数
 void L_run(){
-  //Serial.println("Left");
   servoL.write(85);
   servoR.write(0);
   delay(delays);
 }
 
-//入力が大きい値であれば大きく曲がる関数
+//入力値に応じて回転半径を変える関数(ライントレース用)
 void runRotate(float angle){
   if (angle>0){
     /*L 180→180 R 0→180*/
@@ -134,39 +137,40 @@ void runRotate(float angle){
   }
 }
 
+//直進する関数
 void run(){
-  //Serial.println("Forward");
   servoL.write(180);
   servoR.write(0);
   delay(500);
 }
 
+//ゴールを検出する関数
 void goals(){
   if (analogRead(A5) > 550){
-    //Serial.println("goal");
     interchange(7);
   }
 }
 
+//行き止まりを検出する関数
 void wall(){
+　//検出部
   int flag_wall = 0;
   for(int i=1; i<5; i++){
     if(adc.readADC(i) < 200){
         flag_wall += 1;
-    }
-    
+    } 
   }
-  //Serial.println(adc.readADC(3));
+    
   if(flag_wall == 4){
+  //もし行き止まりであれば
     if(reverse == -1){
+    　//もしスタートンに到達したら
       makePath();
-      servoR.write(90); //○○○.write(int)でモータの回転角（速度）変える
+      servoR.write(90);
       servoL.write(90);
-
       delay(100000);
       return;
     }
-    //Serial.println("wall");
     interchange(5);
   }
 }
